@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>눌러 vs 멈춰</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: 한 장씩 넘기는 상황 카드 → 결산 → 설명 2페이지(4개씩). 가로=2단, 세로=1단. 넘치면 아래로 스크롤 */
+:root{
+  --bg:#EAF1FF; --paper:#FFFFFF; --ink:#0E1F4D; --muted:#5A6A94; --line:#C9D8FB;
+  --blue:#1F5FE0; --blue-soft:#DCE7FF; --red:#E0414A; --red-soft:#FFE3E4;
+  --gold:#F5B731; --screen:#F5F8FF; --device:#2A3350;
+  --f-display:"Jua","Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --r:22px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1330; --paper:#13204A; --ink:#E9EFFF; --muted:#A3B3DD; --line:#2A3C78;
+  --blue:#6F9BFF; --blue-soft:#1C2F66; --red:#FF7980; --red-soft:#4A1F2A;
+  --gold:#F5C24D; --screen:#0F1A3D; --device:#5A6890; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1330; --paper:#13204A; --ink:#E9EFFF; --muted:#A3B3DD; --line:#2A3C78;
+  --blue:#6F9BFF; --blue-soft:#1C2F66; --red:#FF7980; --red-soft:#4A1F2A;
+  --gold:#F5C24D; --screen:#0F1A3D; --device:#5A6890; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:clamp(16px,1.6vw,20px);line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:clamp(12px,2vw,24px);
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(12px,1.6vw,20px)}
+
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.shield{width:clamp(40px,4.5vw,54px);flex:none}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,48px);line-height:1.05;margin:0;letter-spacing:-.5px}
+h1 .vs{color:var(--muted);font-size:.6em;margin:0 .25em;vertical-align:.15em} h1 .s{color:var(--blue)}
+.namebox{display:flex;align-items:center;gap:8px;background:var(--paper);border:2px solid var(--line);border-radius:999px;padding:6px 16px}
+.namebox label{font-family:var(--f-display);color:var(--muted)}
+.namebox input{border:0;outline:0;background:transparent;font:inherit;color:var(--ink);width:9em;border-bottom:2px dashed var(--line);padding:2px 4px}
+.namebox input:focus{border-bottom-color:var(--blue)}
+
+.progress{display:flex;align-items:center;gap:14px}
+.count{font-family:var(--f-display);font-size:1.1em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.count b{color:var(--blue);font-weight:400;font-size:1.3em}
+.dots{display:flex;gap:6px;flex:1;min-width:0}
+.dot{flex:1;height:10px;border-radius:99px;background:var(--line);transition:background .25s}
+.dot.press{background:var(--blue)} .dot.stop{background:var(--red)} .dot.now{outline:3px solid var(--ink);outline-offset:2px}
+
+.card{background:var(--paper);border:2px solid var(--line);border-radius:var(--r);padding:clamp(16px,2.4vw,32px);
+  display:grid;grid-template-columns:1fr;gap:clamp(16px,2.4vw,32px);align-items:center}
+@media (orientation:landscape) and (min-width:720px){.card.q{grid-template-columns:1fr 1.05fr}}
+.enter{animation:in .35s ease}
+@keyframes in{from{opacity:.3;transform:translateX(18px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.enter{animation:none}}
+
+.scene{background:var(--blue-soft);border-radius:18px;min-height:clamp(260px,34vw,380px);display:grid;place-items:center;padding:20px;position:relative;overflow:hidden}
+.num{position:absolute;top:14px;left:14px;width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-size:24px;z-index:2}
+
+.side{display:flex;flex-direction:column;gap:clamp(14px,2vw,22px);min-width:0}
+.eyebrow{font-family:var(--f-display);color:var(--blue);font-size:.95em;letter-spacing:.5px}
+.situ{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3.4vw,42px);line-height:1.25;margin:0;text-wrap:balance;word-break:keep-all}
+.ask{color:var(--muted);margin:0}
+
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,1.6vw,18px)}
+.choice{font:inherit;cursor:pointer;border-radius:20px;border:3px solid var(--line);background:var(--paper);color:var(--ink);
+  padding:clamp(12px,1.8vw,20px) 10px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .12s,background .2s,border-color .2s,opacity .2s}
+.choice:active{transform:scale(.97)}
+.choice:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.choice .ic{width:clamp(64px,8vw,92px);height:clamp(64px,8vw,92px);border-radius:50%;display:grid;place-items:center;font-size:clamp(34px,4.4vw,50px);border:3px solid}
+.choice .lb{font-family:var(--f-display);font-size:clamp(22px,2.6vw,30px)}
+.choice .sub{font-size:.8em;color:var(--muted)}
+.choice.press .ic{border-color:var(--blue);background:var(--blue-soft)} .choice.press .lb{color:var(--blue)}
+.choice.stop .ic{border-color:var(--red);background:var(--red-soft)} .choice.stop .lb{color:var(--red)}
+.choice.press.on{border-color:var(--blue);background:var(--blue-soft)}
+.choice.stop.on{border-color:var(--red);background:var(--red-soft)}
+.choices.picked .choice:not(.on){opacity:.5}
+
+nav{display:flex;gap:12px;justify-content:space-between;padding-bottom:env(safe-area-inset-bottom,0px)}
+.btn{font-family:var(--f-display);font-size:clamp(20px,2.2vw,26px);border-radius:999px;padding:12px clamp(22px,3vw,40px);cursor:pointer;border:3px solid var(--blue);transition:opacity .2s,transform .12s}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.btn.ghost{background:var(--paper);color:var(--blue)}
+.btn.main{background:var(--blue);color:#fff;margin-left:auto}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.hint{align-self:center;color:var(--muted);font-size:.85em;text-align:center;flex:1}
+
+/* ── 장면 일러스트 공통 ── */
+.phone{width:min(230px,66%);aspect-ratio:9/16;background:var(--device);border-radius:28px;padding:12px 9px;box-shadow:0 10px 0 rgba(14,31,77,.12)}
+.phone .scr{background:var(--screen);height:100%;border-radius:18px;padding:12px;font-size:13px;color:var(--ink);display:flex;flex-direction:column;gap:8px;overflow:hidden;line-height:1.4;position:relative}
+.phone .bar{font-weight:700;text-align:center;border-bottom:1px solid var(--line);padding-bottom:6px;font-size:13px}
+.bub{background:var(--paper);border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-size:13px}
+.link{color:var(--blue);text-decoration:underline;word-break:break-all}
+.btnrow{display:flex;gap:6px;margin-top:auto}
+.btnrow span{flex:1;text-align:center;border-radius:8px;padding:6px;font-weight:700;font-size:12px;background:var(--line)}
+.btnrow span.pri{background:var(--blue);color:#fff}
+.field{background:var(--paper);border:2px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px}
+.code{background:var(--paper);border:2px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:24px;letter-spacing:6px;font-variant-numeric:tabular-nums;font-weight:700}
+.from{font-size:11px;color:var(--muted)}
+
+.ticket{background:#FFF1C9;color:#5B3A00;border:3px dashed #E0A21A;border-radius:14px;padding:20px 26px;transform:rotate(-6deg);font-family:var(--f-display);text-align:center;font-size:clamp(24px,3vw,34px);line-height:1.2;position:relative}
+.ticket small{display:block;font-size:.6em;color:#9A6A00}
+.cursor{position:absolute;right:-18px;bottom:-22px;width:40px}
+.gift{background:#FFF7E8;color:#0E1F4D;border:3px solid #D9C49B;border-radius:14px;padding:22px 30px;font-family:var(--f-display);font-size:clamp(24px,3vw,32px);text-align:center;line-height:1.25;position:relative;transform:rotate(-3deg)}
+.gift .pct{position:absolute;right:-20px;bottom:-20px;width:58px;height:58px;border-radius:50%;background:#E0414A;color:#fff;display:grid;place-items:center;font-size:28px;transform:rotate(12deg)}
+.gift b{color:#E0414A;font-weight:400}
+
+/* ── 4번: 게임 이벤트 팝업 (게임 화면이라 고정 색상) ── */
+.phone .scr.game{padding:0;background:radial-gradient(120% 70% at 50% 0%,#5A3BC4 0%,#2A1868 55%,#160C3D 100%);color:#fff;gap:0}
+.ghud{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:11px;font-weight:700}
+.ghud .lv{background:rgba(255,255,255,.15);border-radius:99px;padding:2px 9px}
+.ghud .cur{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.35);border-radius:99px;padding:2px 9px 2px 4px}
+.ghud .cur svg{width:14px}
+.gpop{margin:4px 10px 12px;flex:1;border-radius:16px;background:linear-gradient(180deg,#FFE58A 0%,#F5B731 100%);padding:3px;display:flex}
+.gin{flex:1;border-radius:13px;background:linear-gradient(180deg,#3B2290 0%,#24145F 100%);display:flex;flex-direction:column;align-items:center;padding:10px 8px;gap:4px;position:relative;overflow:hidden}
+.gin::before{content:"";position:absolute;width:220%;aspect-ratio:1;top:-40%;left:-60%;
+  background:repeating-conic-gradient(rgba(255,229,138,.16) 0 10deg,transparent 10deg 20deg);animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion:reduce){.gin::before{animation:none}}
+.gin>*{position:relative}
+.gribbon{background:#FF3D6E;color:#fff;font-family:var(--f-display);font-size:13px;padding:2px 14px;border-radius:4px;transform:rotate(-2deg);box-shadow:0 2px 0 #A3173E}
+.gbig{width:72px;filter:drop-shadow(0 4px 8px rgba(91,184,255,.7));margin-top:4px}
+.gamt{font-family:var(--f-display);font-size:15px;line-height:1.1;text-align:center}
+.gamt b{display:block;font-weight:400;font-size:26px;color:#FFE58A;text-shadow:0 2px 0 #B5760A}
+.gtime{font-size:10px;background:rgba(0,0,0,.35);border-radius:99px;padding:2px 10px;font-variant-numeric:tabular-nums;color:#FFB4C6}
+.gbtn{margin-top:auto;width:100%;text-align:center;font-family:var(--f-display);font-size:15px;color:#3A2400;background:linear-gradient(180deg,#FFF0A8,#F5B731);border-radius:10px;padding:7px;box-shadow:0 3px 0 #B5760A}
+.gnote{font-size:9px;color:#C9BEF2;text-align:center;line-height:1.3}
+
+/* ── 6번: 앱 설치 + 권한 대화상자 ── */
+.store{gap:10px}
+.sapp{display:flex;gap:10px;align-items:center}
+.appic{width:52px;height:52px;border-radius:14px;background:linear-gradient(145deg,#FFD24A,#F59E0B);display:grid;place-items:center;flex:none;box-shadow:0 2px 0 rgba(0,0,0,.12)}
+.appic svg{width:30px}
+.sapp b{font-size:14px;display:block}
+.smeta{display:flex;justify-content:space-around;text-align:center;font-size:10px;color:var(--muted);border-block:1px solid var(--line);padding:6px 0}
+.smeta b{display:block;color:var(--ink);font-size:12px}
+.sprog{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.sprog i{display:block;height:100%;width:62%;background:var(--blue);border-radius:99px}
+.shots{display:flex;gap:6px;flex:1}
+.shots i{flex:1;border-radius:8px;background:var(--line)}
+.dim{position:absolute;inset:0;background:rgba(8,14,36,.55)}
+.dlg{position:absolute;left:8px;right:8px;bottom:10px;background:var(--paper);border-radius:18px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.dlg svg{width:26px}
+.dlg p{margin:0;font-size:12.5px;line-height:1.45;word-break:keep-all}
+.dlg p b{color:var(--blue)}
+.dbtns{width:100%;display:flex;flex-direction:column;gap:5px}
+.dbtns span{display:block;border-radius:99px;padding:7px;font-weight:700;font-size:12px;background:var(--blue-soft);color:var(--blue)}
+.dstep{font-size:10px;color:var(--muted)}
+
+/* ── 1번: 웹페이지 위 광고 팝업 ── */
+.scr.web{padding:0;gap:0}
+.wurl{margin:8px 10px;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:10px;color:var(--muted)}
+.wpage{padding:4px 12px;display:flex;flex-direction:column;gap:7px}
+.wl{height:8px;border-radius:4px;background:var(--line)} .wl.s{width:60%} .wl.h{height:13px;width:85%;background:var(--muted);opacity:.5}
+.wimg{height:60px;border-radius:8px;background:var(--line)}
+.ad{position:absolute;left:10px;right:10px;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,#FFF6D6,#FFFFFF 55%);color:#1D1D2B;border-radius:16px;padding:14px 12px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35);border:2px solid #FFC93C}
+.adlab{position:absolute;left:8px;top:6px;font-size:9px;border:1px solid #9A9AA8;color:#6B6B78;border-radius:3px;padding:0 4px}
+.adx{position:absolute;right:8px;top:4px;font-size:10px;color:#A0A0AA}
+.adtop{font-family:var(--f-display);font-size:21px;color:#E0414A;line-height:1.1;margin-top:4px}
+.adwin{font-size:11px;font-weight:700;color:#4A4A5A}
+.coupon{width:100%;display:flex;align-items:stretch;border-radius:10px;overflow:hidden;background:#FF5A4E;color:#fff;text-align:left;box-shadow:0 3px 0 #C2352C}
+.coupon>div{flex:1;padding:8px 10px;border-right:2px dashed rgba(255,255,255,.7)}
+.coupon small{display:block;font-size:10px;opacity:.9}
+.coupon b{font-family:var(--f-display);font-weight:400;font-size:24px;line-height:1.1}
+.cfree{display:grid;place-items:center;padding:0 10px;font-family:var(--f-display);font-size:14px;background:#E8463B}
+.adtime{font-size:10px;color:#E0414A;font-variant-numeric:tabular-nums;font-weight:700}
+.adbtn{width:100%;background:#1D1D2B;color:#FFD84D;font-family:var(--f-display);font-size:15px;border-radius:99px;padding:8px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){.adbtn{animation:none}}
+.tap{position:absolute;right:26px;bottom:44px;width:30px;z-index:3;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+
+/* ── 2번: 메신저 대화 (메신저 화면이라 고정 색상) ── */
+.scr.msg{padding:0;gap:0;background:#ABC1D3;color:#1A1A1A}
+.mtop{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-size:14px;background:#ABC1D3}
+.mtop b{font-size:13px}
+.mbody{flex:1;padding:4px 9px;display:flex;flex-direction:column;gap:9px}
+.mday{align-self:center;font-size:9.5px;background:rgba(0,0,0,.14);color:#fff;border-radius:99px;padding:2px 10px}
+.mrow{display:flex;gap:6px;align-items:flex-end}
+.mrow.me{justify-content:flex-end}
+.mav{width:30px;height:30px;border-radius:11px;background:#7FA6D6;color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;align-self:flex-start;flex:none}
+.mcol{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mname{font-size:10px;color:#3B4A5A}
+.mb{background:#fff;border-radius:4px 12px 12px 12px;padding:6px 9px;font-size:12px;max-width:130px;word-break:keep-all}
+.mb.me{background:#FEE500;border-radius:12px 4px 12px 12px}
+.mlink{background:#fff;border-radius:10px;overflow:hidden;width:130px}
+.mthumb{height:58px;background:linear-gradient(135deg,#5B6B80,#2F3A4A);display:grid;place-items:center;color:#fff;font-size:22px;font-weight:700}
+.mlt{padding:5px 8px;font-size:11px;line-height:1.3}
+.mlt b{display:block;font-size:11.5px}
+.mlt span{color:#8A8A8A;font-size:10px}
+.mtime{font-size:9px;color:#4E5D6C;white-space:nowrap}
+.minput{display:flex;align-items:center;gap:6px;background:#fff;padding:7px 10px;font-size:11px;color:#A0A0A0}
+.minput span{flex:1;background:#F2F2F2;border-radius:99px;padding:4px 10px}
+.minput i{width:22px;height:22px;border-radius:50%;background:#FEE500}
+
+/* ── 5번: 중고거래 글 ── */
+.scr.market{padding:0;gap:0}
+.mk-top{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:14px}
+.mk-top b{font-size:13px}
+.mk-img{height:98px;background:#E9EEF6;display:grid;place-items:center;position:relative}
+.gc{width:72%;border-radius:10px;padding:8px 10px;background:linear-gradient(135deg,#2E7D5B,#58B68A);color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.15);transform:rotate(-4deg);display:flex;align-items:baseline;gap:3px;flex-wrap:wrap}
+.gc small{width:100%;font-size:10px;opacity:.9}
+.gc b{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1}
+.gc span{font-size:12px}
+.mk-sold{position:absolute;left:8px;top:8px;background:#E0414A;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px}
+.mk-seller{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.mk-seller i{width:28px;height:28px;border-radius:50%;background:var(--line);flex:none}
+.mk-seller b{display:block;font-size:12px}
+.mk-seller span{font-size:10px;color:var(--red)}
+.mk-title{padding:8px 12px 2px;font-weight:700;font-size:13px;word-break:keep-all}
+.mk-desc{padding:0 12px;font-size:11px;color:var(--muted)}
+.mk-bot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--line)}
+.mk-price s{display:block;font-size:10px;color:var(--muted)}
+.mk-price b{font-size:15px;color:var(--red)}
+.mk-chat{background:var(--blue);color:#fff;font-weight:700;font-size:12px;border-radius:8px;padding:6px 12px}
+
+/* ── 7번: 가짜 로그인 페이지 ── */
+.scr.login{padding:0;gap:0}
+.burl{display:flex;align-items:center;gap:5px;margin:8px 10px 4px;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:10px;min-width:0}
+.burl .warn{color:var(--red);font-weight:700;white-space:nowrap}
+.burl .addr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.lg{flex:1;padding:4px 14px 12px;display:flex;flex-direction:column;gap:7px}
+.lg-logo{display:flex;align-items:center;gap:6px;justify-content:center;font-family:var(--f-display);font-size:18px;margin:2px 0}
+.lg-logo i{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#7B5CFF,#FF5FA2)}
+.lg-alert{background:var(--red-soft);color:var(--red);font-size:10.5px;border-radius:8px;padding:6px 8px;font-weight:700;text-align:center;word-break:keep-all;line-height:1.35}
+.inp{border:1.5px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12px;background:var(--paper);display:flex;justify-content:space-between;align-items:center}
+.inp.on{border-color:var(--blue)}
+.inp em{font-style:normal;color:var(--muted);font-size:10px}
+.lg-keep{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.lg-keep i{width:12px;height:12px;border-radius:3px;background:var(--blue)}
+.lg-btn{background:#7B5CFF;color:#fff;text-align:center;border-radius:8px;padding:8px;font-weight:700;font-size:13px}
+.lg-foot{font-size:10px;color:var(--muted);text-align:center;margin-top:auto}
+
+/* ── 8번: 인증번호 입력 ── */
+.scr.otp{padding:0;gap:0}
+.noti{margin:8px;background:var(--paper);border-radius:12px;padding:7px 9px;box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:10.5px;line-height:1.35;animation:drop .6s .2s ease both;word-break:keep-all}
+.noti .nh{display:flex;justify-content:space-between;color:var(--muted);font-size:9.5px;margin-bottom:2px}
+.noti b{color:var(--blue)}
+@keyframes drop{from{transform:translateY(-130%);opacity:0}}
+@media (prefers-reduced-motion:reduce){.noti{animation:none}}
+.otp-body{padding:4px 14px 8px;display:flex;flex-direction:column;gap:7px;align-items:center;text-align:center}
+.otp-body h4{margin:0;font-size:14px}
+.otp-body p{margin:0;font-size:10.5px;color:var(--muted);word-break:keep-all;line-height:1.35}
+.boxes{display:flex;gap:3px}
+.boxes span{width:21px;height:28px;border:1.5px solid var(--line);border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--paper)}
+.boxes span.cur{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.otp-time{font-size:10.5px;color:var(--red);font-weight:700;font-variant-numeric:tabular-nums}
+.otp-btn{width:100%;background:var(--blue);color:#fff;border-radius:8px;padding:7px;font-weight:700;font-size:12px}
+.keys{margin-top:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:7px;background:var(--line)}
+.keys span{background:var(--paper);border-radius:6px;padding:3px 0;text-align:center;font-size:13px;font-weight:700}
+
+/* ── 결산 ── */
+.result,.explain{display:flex;flex-direction:column;gap:clamp(16px,2.4vw,28px)}
+.rhead{display:grid;grid-template-columns:1fr;gap:20px;align-items:center}
+@media (min-width:720px){.rhead{grid-template-columns:auto 1fr}}
+.score{width:clamp(150px,18vw,200px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;text-align:center;justify-self:center;
+  background:conic-gradient(var(--red) calc(var(--p)*1%),var(--line) 0)}
+.score>div{width:78%;aspect-ratio:1;border-radius:50%;background:var(--paper);display:grid;place-content:center}
+.score b{font-family:var(--f-display);font-weight:400;font-size:clamp(42px,5vw,58px);line-height:1;color:var(--red);font-variant-numeric:tabular-nums}
+.score span{color:var(--muted);font-size:.85em}
+.rtitle{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3.2vw,38px);margin:0 0 6px;line-height:1.25;word-break:keep-all;text-wrap:balance}
+.rtitle em{font-style:normal;color:var(--blue)}
+.rsub{margin:0;color:var(--muted);word-break:keep-all}
+.list{display:grid;grid-template-columns:1fr;gap:10px;list-style:none;margin:0;padding:0}
+@media (min-width:720px){.list{grid-template-columns:1fr 1fr}}
+.list li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border:2px solid var(--line);border-radius:16px;padding:10px 14px;min-width:0}
+.n{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-family:var(--f-display);flex:none}
+.list .q{font-family:var(--f-display);font-size:1.05em;line-height:1.3;min-width:0}
+.pill{font-family:var(--f-display);border-radius:999px;padding:3px 12px;white-space:nowrap;font-size:.9em}
+.pill.press{background:var(--blue-soft);color:var(--blue)} .pill.stop{background:var(--red-soft);color:var(--red)}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:620px){.rules{grid-template-columns:1fr}}
+.rule{border-radius:18px;padding:16px;background:var(--blue-soft);display:flex;flex-direction:column;gap:4px}
+.rule .step{font-family:var(--f-display);color:var(--blue);font-size:.9em}
+.rule h3{font-family:var(--f-display);font-weight:400;font-size:clamp(22px,2.4vw,28px);margin:0}
+.rule p{margin:0;font-size:.9em;word-break:keep-all}
+.secline{font-family:var(--f-display);font-size:1.15em;margin:0}
+
+/* ── 설명 페이지 ── */
+.ehead h2{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3.2vw,38px);margin:0;line-height:1.2}
+.ehead p{margin:4px 0 0;color:var(--muted)}
+.egrid{display:grid;grid-template-columns:1fr;gap:clamp(12px,1.8vw,20px)}
+@media (min-width:720px){.egrid{grid-template-columns:1fr 1fr}}
+.ex{border:2px solid var(--line);border-radius:18px;padding:clamp(14px,1.8vw,20px);display:flex;flex-direction:column;gap:12px;min-width:0}
+.ex .top{display:flex;align-items:center;gap:10px}
+.ex h3{font-family:var(--f-display);font-weight:400;font-size:clamp(20px,2.2vw,26px);margin:0;flex:1;line-height:1.25;word-break:keep-all}
+.ex .row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}
+.ex .row p{margin:0;word-break:keep-all}
+.tag2{font-family:var(--f-display);font-size:.85em;border-radius:8px;padding:2px 10px;white-space:nowrap}
+.tag2.why{background:var(--red-soft);color:var(--red)}
+.tag2.do{background:var(--blue-soft);color:var(--blue)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg class="shield" viewBox="0 0 60 66" aria-hidden="true"><path d="M30 3 54 12v20c0 16-10 26-24 31C16 58 6 48 6 32V12Z" fill="var(--blue)" stroke="var(--ink)" stroke-width="3"/><path d="m30 18 4.4 9 9.8 1.4-7.1 6.9 1.7 9.8L30 40.5l-8.8 4.6 1.7-9.8-7.1-6.9 9.8-1.4Z" fill="#fff"/></svg>
+      <h1><span>눌러!</span><span class="vs">VS</span><span class="s">멈춰!</span></h1>
+    </div>
+    <div class="namebox"><label for="nm">이름</label><input id="nm" autocomplete="off" placeholder="이름을 써요"></div>
+  </header>
+
+  <div class="progress" id="prog"></div>
+  <main id="main"></main>
+  <nav>
+    <button class="btn ghost" id="prev">◀ 이전</button>
+    <span class="hint" id="hint"></span>
+    <button class="btn main" id="next">다음 ▶</button>
+  </nav>
+</div>
+
+<script>
+const PHONE = (bar, inner, cls='') => `<div class="phone"><div class="scr ${cls}">${bar?`<div class="bar">${bar}</div>`:''}${inner}</div></div>`;
+const GEM = `<svg viewBox="0 0 64 56"><path d="M14 2h36l14 16-32 36L0 18Z" fill="#5BB8FF"/><path d="M14 2 22 18h20L50 2Z" fill="#9AD6FF"/><path d="M0 18h22l10 36Z" fill="#3A92E6"/><path d="M64 18H42L32 54Z" fill="#2C7AD0"/><path d="M22 18h20L32 54Z" fill="#6CC4FF"/><path d="M14 2 0 18h22Z M50 2 64 18H42Z" fill="#B8E4FF"/></svg>`;
+
+const Q = [
+  {s:"무료 쿠폰을 준다는 광고가 떴어요!", k:"무료 쿠폰 광고",
+   art:PHONE("",`<div class="wurl">news-today.kr</div>
+     <div class="wpage"><div class="wl h"></div><div class="wl"></div><div class="wl s"></div><div class="wimg"></div><div class="wl"></div><div class="wl"></div><div class="wl s"></div></div>
+     <div class="dim"></div>
+     <div class="ad"><span class="adlab">광고</span><span class="adx">✕</span>
+       <div class="adtop">축하합니다!</div>
+       <div class="adwin">오늘의 1,000번째 방문자로 당첨됐어요</div>
+       <div class="coupon"><div><small>편의점 모바일 쿠폰</small><b>5,000원</b></div><span class="cfree">무료</span></div>
+       <div class="adtime">02:59 후에 사라져요</div>
+       <div class="adbtn">무료 쿠폰 지금 받기</div>
+     </div>
+     <svg class="tap" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#1F5FE0" stroke="#fff" stroke-width="1.5"/></svg>`,"web"),
+   why:"광고를 누르면 가짜 사이트나 이상한 앱으로 연결될 수 있어요.",
+   how:"진짜 쿠폰은 공식 앱이나 홈페이지에서 직접 찾아봐요."},
+  {s:"친구가 링크 하나를 보내왔어요.", k:"친구가 보낸 링크",
+   art:PHONE("",`<div class="mtop"><span>‹</span><b>민수</b><span>≡</span></div>
+     <div class="mbody">
+       <span class="mday">11월 5일 목요일</span>
+       <div class="mrow"><div class="mav">민</div><div class="mcol"><span class="mname">민수</span>
+         <div class="mb">야 이거 너 아니야?? ㅋㅋㅋ</div>
+         <div class="mlink"><div class="mthumb">?</div><div class="mlt"><b>사진 보러 가기</b><span>xxxx.com</span></div></div>
+       </div><span class="mtime">오후 8:41</span></div>
+       <div class="mrow me"><span class="mtime">오후 8:42</span><div class="mb me">뭔데?</div></div>
+     </div>
+     <div class="minput"><span>메시지 입력</span><i></i></div>`,"msg"),
+   why:"친구 계정이 해킹돼서 다른 사람이 대신 보낸 메시지일 수 있어요.",
+   how:"누르기 전에 친구에게 전화하거나 직접 물어보고 확인해요."},
+  {s:"택배 주소를 확인하라며 문자가 왔어요.", k:"택배 확인 문자",
+   art:PHONE("문자 메시지",`<div class="bub">[택배]<br>주소 확인 후 수령해 주세요.<br><span class="link">http://xxx.co.kr</span></div><div class="from">모르는 번호에서 왔어요</div>`),
+   why:"문자 속 링크로 돈이나 정보를 빼가는 '스미싱'일 수 있어요.",
+   how:"택배는 택배회사 공식 앱에서 운송장 번호로 확인해요."},
+  {s:"게임 아이템을 무료로 준대요!", k:"게임 아이템 무료",
+   art:PHONE("",`<div class="ghud"><span class="lv">Lv.27</span><span class="cur">${GEM}120</span></div>
+     <div class="gpop"><div class="gin">
+       <span class="gribbon">오늘만 한정 이벤트</span>
+       <div class="gbig">${GEM}</div>
+       <div class="gamt">다이아<b>10,000개</b>무료 지급!</div>
+       <span class="gtime">남은 시간 04:59</span>
+       <div class="gbtn">지금 받기</div>
+       <div class="gnote">받으려면 게임 아이디와<br>비밀번호를 입력하세요</div>
+     </div></div>`,"game"),
+   why:"공짜를 미끼로 게임 아이디와 비밀번호를 빼가는 낚시일 수 있어요.",
+   how:"진짜 이벤트는 게임 안 공지사항에서 확인해요."},
+  {s:"문화상품권을 싸게 판다는 글을 봤어요.", k:"문화상품권 할인 판매",
+   art:PHONE("",`<div class="mk-top"><span>‹</span><b>중고거래</b><span>⋮</span></div>
+     <div class="mk-img"><span class="mk-sold">급처분</span><div class="gc"><small>문화상품권</small><b>50,000</b><span>원</span></div></div>
+     <div class="mk-seller"><i></i><div><b>싸게팔아요77</b><span>가입 1일 · 거래 0회</span></div></div>
+     <div class="mk-title">문화상품권 5만원권 1만원에 팔아요</div>
+     <div class="mk-desc">선입금만 가능해요 · 오늘까지만!</div>
+     <div class="mk-bot"><div class="mk-price"><s>50,000원</s><b>10,000원</b></div><span class="mk-chat">채팅하기</span></div>`,"market"),
+   why:"너무 싸면 의심해요. 돈만 받고 사라지는 사기가 많아요.",
+   how:"사고 싶으면 먼저 부모님이나 선생님과 상의해요."},
+  {s:"앱 설치 화면에서 권한을 요구해요.", k:"앱 권한 요청",
+   art:PHONE("",`<div class="sapp"><div class="appic"><svg viewBox="0 0 32 32"><path d="M9 4h14l-3 9H12Z" fill="#fff"/><rect x="12" y="13" width="8" height="15" rx="2" fill="#fff"/><circle cx="16" cy="18" r="1.8" fill="#F59E0B"/></svg></div>
+       <div><b>손전등 플러스</b><span class="from">유틸리티 · 무료</span></div></div>
+     <div class="smeta"><div><b>4.1★</b>리뷰 2천</div><div><b>12MB</b>크기</div><div><b>3+</b>연령</div></div>
+     <div class="from">설치 중… 62%</div><div class="sprog"><i></i></div>
+     <div class="shots"><i></i><i></i><i></i></div>
+     <div class="dim"></div>
+     <div class="dlg">
+       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="var(--blue)"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z" fill="var(--blue)"/></svg>
+       <p><b>손전등 플러스</b>에서<br>내 <b>연락처</b>에 접근하도록<br>허용할까요?</p>
+       <div class="dbtns"><span>허용</span><span>허용 안함</span></div>
+       <span class="dstep">권한 1/3 · 연락처, 사진, 위치</span>
+     </div>`,"store"),
+   why:"필요 없는 권한을 주면 내 연락처·사진·위치가 새어 나갈 수 있어요.",
+   how:"손전등 앱에 연락처가 필요할까요? 기능에 필요 없으면 '허용 안함'을 눌러요."},
+  {s:"로그인하라며 계정 정보를 입력하라고 해요.", k:"로그인 요구",
+   art:PHONE("",`<div class="burl"><span class="warn">⚠ 안전하지 않음</span><span class="addr">playworld.login-check.xyz</span></div>
+     <div class="lg">
+       <div class="lg-logo"><i></i>플레이월드</div>
+       <div class="lg-alert">보안 점검 중입니다. 24시간 안에 다시 로그인하지 않으면 계정이 정지돼요!</div>
+       <div class="inp">jiwoo2014<em>아이디</em></div>
+       <div class="inp on">●●●●●●<em>비밀번호</em></div>
+       <div class="lg-keep"><i></i>로그인 상태 유지</div>
+       <div class="lg-btn">로그인</div>
+       <div class="lg-foot">문자 속 링크를 눌렀더니 이 화면이 나왔어요</div>
+     </div>`,"login"),
+   why:"링크를 타고 들어온 로그인 화면은 진짜와 똑같이 만든 가짜일 수 있어요.",
+   how:"링크 대신 앱이나 사이트를 직접 열어서 로그인해요."},
+  {s:"본인 인증을 위해 인증번호를 입력하래요.", k:"인증번호 요구",
+   art:PHONE("",`<div class="noti"><div class="nh"><span>메시지</span><span>지금</span></div>[Web발신] 본인확인 인증번호 <b>[482913]</b>입니다. 타인에게 절대 알려주지 마세요.</div>
+     <div class="otp-body">
+       <h4>본인 인증</h4>
+       <p>이벤트 선물을 보내려면<br>인증번호 6자리가 필요해요</p>
+       <div class="boxes"><span>4</span><span>8</span><span>2</span><span>9</span><span class="cur"></span><span></span></div>
+       <span class="otp-time">남은 시간 02:47</span>
+       <div class="otp-btn">인증하고 선물 받기</div>
+     </div>
+     <div class="keys"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>←</span><span>0</span><span>완료</span></div>`,"otp"),
+   why:"인증번호는 나만 알아야 하는 열쇠예요. 남이 알면 내 계정을 가져갈 수 있어요.",
+   how:"내가 신청하지 않았거나 누가 알려 달라고 하면 절대 입력하지 않아요."},
+];
+
+const N = Q.length, PER = 4, EXP = Math.ceil(N/PER);
+const RESULT = N, LAST = N + EXP;   // 0..N-1 상황, N 결산, N+1.. 설명
+let i = 0;
+const ans = Array(N).fill(null);
+const $ = id => document.getElementById(id);
+const main=$('main'), prog=$('prog'), prev=$('prev'), next=$('next'), hint=$('hint'), nm=$('nm');
+const pillOf = a => `<span class="pill ${a}">${a==='stop'?'✋ 멈춰':'👍 눌러'}</span>`;
+
+function renderProg(){
+  const label = i<N ? `<b>${i+1}</b> / ${N}` : i===RESULT ? '결과' : `설명 <b>${i-RESULT}</b> / ${EXP}`;
+  prog.innerHTML = `<div class="count">${label}</div>
+    <div class="dots">${Q.map((_,k)=>`<i class="dot ${ans[k]||''} ${k===i?'now':''}"></i>`).join('')}</div>`;
+}
+
+function renderQ(){
+  const q=Q[i], a=ans[i];
+  main.innerHTML = `<section class="card q enter">
+    <div class="scene"><span class="num">${i+1}</span>${q.art}</div>
+    <div class="side">
+      <div class="eyebrow">상황을 듣고 선택해요!</div>
+      <h2 class="situ">${q.s}</h2>
+      <p class="ask">평소의 나라면 어떻게 했을까요?</p>
+      <div class="choices ${a?'picked':''}">
+        <button class="choice press ${a==='press'?'on':''}" data-v="press" aria-pressed="${a==='press'}">
+          <span class="ic">👍</span><span class="lb">눌러!</span><span class="sub">눌렀을 것 같아요</span></button>
+        <button class="choice stop ${a==='stop'?'on':''}" data-v="stop" aria-pressed="${a==='stop'}">
+          <span class="ic">✋</span><span class="lb">멈춰!</span><span class="sub">멈췄을 것 같아요</span></button>
+      </div>
+    </div></section>`;
+  main.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+    ans[i]=b.dataset.v;
+    main.querySelectorAll('.choice').forEach(c=>{const on=c===b;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on);});
+    main.querySelector('.choices').classList.add('picked');
+    renderProg(); renderNav();
+  });
+}
+
+function renderResult(){
+  const stop = ans.filter(v=>v==='stop').length;
+  const name = nm.value.trim().replace(/[<>&"]/g,'');
+  const who = name ? `<em>${name}</em>, ` : '';
+  const msg = stop===N ? `${who}모든 순간에 멈췄어요! 정보 지킴이 인증!`
+    : stop>=6 ? `${who}거의 다 멈췄어요! 조금만 더 조심해요.`
+    : stop>=3 ? `${who}멈추는 연습이 더 필요해요.`
+    : `${who}오늘부터 '멈춰!'를 기억해요.`;
+  const sub = stop===N ? '여덟 가지 상황 모두 누르기 전에 멈추고 생각했어요.'
+    : `눌렀다고 고른 상황이 ${N-stop}개 있어요. 사실 여덟 가지 모두 멈추는 게 안전한 상황이에요.`;
+  main.innerHTML = `<section class="card result enter">
+    <div class="rhead">
+      <div class="score" style="--p:${stop/N*100}"><div><b>${stop}</b><span>/ ${N} 멈춤</span></div></div>
+      <div><h2 class="rtitle">${msg}</h2><p class="rsub">${sub}</p></div>
+    </div>
+    <p class="secline">내가 고른 답</p>
+    <ul class="list">${Q.map((q,k)=>`<li><span class="n">${k+1}</span><div class="q">${q.k}</div>${pillOf(ans[k])}</li>`).join('')}</ul>
+    <p class="secline">순간의 선택이 내 정보를 지켜요</p>
+    <div class="rules">
+      <div class="rule"><span class="step">하나</span><h3>멈춰요</h3><p>링크, 광고, 입력창이 나오면 바로 누르지 않아요.</p></div>
+      <div class="rule"><span class="step">둘</span><h3>확인해요</h3><p>보낸 사람, 주소, 공식 앱인지 직접 확인해요.</p></div>
+      <div class="rule"><span class="step">셋</span><h3>물어봐요</h3><p>헷갈리면 선생님이나 부모님께 먼저 물어봐요.</p></div>
+    </div></section>`;
+}
+
+function renderExplain(){
+  const p = i-RESULT-1, from = p*PER, items = Q.slice(from, from+PER);
+  main.innerHTML = `<section class="card explain enter">
+    <div class="ehead"><h2>왜 멈춰야 할까요?</h2><p>${from+1}번부터 ${from+items.length}번까지 상황을 살펴봐요.</p></div>
+    <div class="egrid">${items.map((q,k)=>`<article class="ex">
+      <div class="top"><span class="n">${from+k+1}</span><h3>${q.s}</h3>${pillOf(ans[from+k])}</div>
+      <div class="row"><span class="tag2 why">위험해요</span><p>${q.why}</p></div>
+      <div class="row"><span class="tag2 do">이렇게 해요</span><p>${q.how}</p></div>
+    </article>`).join('')}</div></section>`;
+}
+
+function renderNav(){
+  prev.disabled = i===0;
+  hint.textContent = '';
+  if(i<N){
+    next.textContent = i===N-1 ? '결과 보기 ▶' : '다음 ▶';
+    next.disabled = !ans[i];
+    if(!ans[i]) hint.textContent = '눌러 또는 멈춰를 골라요';
+  } else {
+    next.disabled = false;
+    next.textContent = i===RESULT ? '설명 보기 ▶' : i===LAST ? '처음부터 ↺' : '다음 ▶';
+  }
+}
+
+function render(){
+  renderProg();
+  if(i<N) renderQ(); else if(i===RESULT) renderResult(); else renderExplain();
+  renderNav();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+prev.onclick=()=>{ if(i>0){i--;render();} };
+next.onclick=()=>{
+  if(i===LAST){ ans.fill(null); i=0; render(); return; }
+  if(i<N && !ans[i]) return;
+  i++; render();
+};
+render();
+</script>
+
+</html>
